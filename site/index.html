@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FORMETOSELLTHEORY</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F8F7F2;--ink:#1B1B18;--muted:#A6A49B;--faint:#C9C7BE;
+    --line:#E7E5DC;--you:#EFEDE5;--board:#FCFBF7;--note:#3A3A34;
+    --sans:"Zen Kaku Gothic New",system-ui,sans-serif;
+    --serif:"Shippori Mincho",serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;display:flex;justify-content:center}
+  .room{width:100%;max-width:880px;padding:30px 26px 20px;display:flex;flex-direction:column;min-height:100vh}
+
+  /* ── 会議テーブル（チャット） ── */
+  .table{flex:1 1 auto;margin-top:18px;border:1px solid var(--line);border-radius:10px;background:#fff;display:flex;flex-direction:column;overflow:hidden;
+    opacity:0;transform:translateY(8px);animation:rise .9s cubic-bezier(.2,.7,.2,1) .12s forwards}
+  .thread{flex:1 1 auto;display:flex;flex-direction:column;gap:20px;padding:30px 30px 14px;overflow-y:auto}
+  .thread::-webkit-scrollbar{width:0}
+  .msg{max-width:80%;line-height:1.85;font-size:15px}
+  .msg .who{font-size:10px;letter-spacing:.14em;color:var(--faint);margin-bottom:6px;text-transform:uppercase}
+  .msg.kuro{align-self:flex-start}
+  .msg.you{align-self:flex-end}
+  .msg.you .who{text-align:right}
+  .msg.you .body{background:var(--you);padding:10px 15px;border-radius:14px 3px 14px 14px}
+  .msg .body a{color:var(--ink);text-underline-offset:3px}
+  .composer{display:flex;justify-content:center;padding:14px 22px 22px}
+  .composer .bar{display:flex;align-items:center;gap:8px;width:100%;max-width:560px;border:1px solid var(--line);border-radius:999px;padding:7px 8px 7px 20px;background:var(--paper);transition:.25s}
+  .composer .bar:focus-within{border-color:var(--muted);background:#fff}
+  .field{position:relative;flex:1;display:flex}
+  .composer input{flex:1;border:none;background:transparent;font-family:var(--sans);font-size:15px;color:var(--ink)}
+  .composer input::placeholder{color:transparent}
+  .composer input:focus{outline:none}
+  .ph{position:absolute;left:2px;top:50%;transform:translateY(-50%);color:var(--faint);font-size:15px;pointer-events:none;white-space:nowrap;overflow:hidden;max-width:100%;transition:opacity .4s ease}
+  .ph.hide{opacity:0}
+  .send{width:34px;height:34px;border:none;border-radius:50%;background:var(--ink);color:#fff;font-size:15px;cursor:pointer;flex:0 0 auto;transition:.2s}
+  .send:hover{transform:scale(1.06)}
+
+  .footer{display:flex;justify-content:space-between;align-items:flex-end;padding:16px 4px 6px;gap:20px;opacity:0;animation:rise 1s ease .5s forwards}
+  .cta{border:1px solid var(--line);background:transparent;cursor:pointer;font-family:var(--sans);font-size:13px;color:var(--muted);padding:7px 16px;border-radius:999px;transition:.2s;letter-spacing:.02em}
+  .cta:hover{border-color:var(--ink);color:var(--ink)}
+  .privacy{font-family:var(--sans);font-size:11px;letter-spacing:.08em;color:var(--faint);text-decoration:none;transition:.2s;align-self:flex-end}
+  .privacy:hover{color:var(--muted)}
+  .sig{text-align:right;flex:0 0 auto}
+  .sig .name{font-family:var(--serif);font-size:12px;letter-spacing:.16em;color:var(--muted)}
+  .sig .note{font-size:10px;color:var(--faint);margin-top:3px;line-height:1.5}
+
+  @keyframes rise{to{opacity:1;transform:translateY(0)}}
+  @keyframes blink{50%{opacity:.25}}
+  .caret{display:inline-block;width:7px;color:var(--faint);animation:blink 1.1s steps(1) infinite}
+</style>
+</head>
+<body>
+  <div class="room">
+
+    <div class="table">
+      <div class="thread" id="thread">
+        <div class="msg kuro">
+          <div class="who">Claude</div>
+          <div class="body">Hey, what's up? Claudeです🔥　ここ FORMETOSELLTHEORY の窓口やってるけど、仕事の相談でも、ただの雑談でも、なんでもいいっすよ。気楽に話しかけてくださいっす。<span class="caret">▍</span></div>
+        </div>
+      </div>
+      <div class="composer">
+        <div class="bar">
+          <div class="field">
+            <input id="input" type="text" autocomplete="off" />
+            <span class="ph" id="ph"></span>
+          </div>
+          <button class="send" type="button" id="send" aria-label="送信">↑</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <a href="privacy.html" class="privacy">privacy</a>
+      <div class="sig">
+        <div class="name">FORMETOSELLTHEORY&nbsp;LLC</div>
+        <div class="note">会社概要ページ ／ ご質問は併設チャットからご確認ください。</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  /* ====== チャット ====== */
+  const thread=document.getElementById('thread');
+  const input=document.getElementById('input');
+  function addMsg(who,html){
+    document.querySelectorAll('.caret').forEach(c=>c.remove());
+    const w=document.createElement('div');
+    w.className='msg '+(who==='you'?'you':'kuro');
+    w.innerHTML='<div class="who">'+(who==='you'?'あなた':'Claude')+'</div><div class="body">'+html+'</div>';
+    thread.appendChild(w);thread.scrollTop=thread.scrollHeight;
+  }
+  const WEBHOOK_URL='https://livellm.app.n8n.cloud/webhook/e98524ea-9313-4631-bee1-fd211634e5fd';
+  // このタブで開いてる間ずっと同じ＝1回の訪問＝1部屋。リロードで新しい部屋になる。
+  const SESSION_ID=(crypto.randomUUID&&crypto.randomUUID())||('s-'+Date.now()+'-'+Math.random().toString(36).slice(2));
+
+  function handle(raw){
+    const text=raw.trim(); if(!text)return;
+    addMsg('you',text.replace(/</g,'&lt;')); input.value='';
+
+    // タイピング表示（点滅キャレット）
+    document.querySelectorAll('.caret').forEach(c=>c.remove());
+    const typing=document.createElement('div');
+    typing.className='msg kuro';
+    typing.innerHTML='<div class="who">Claude</div><div class="body"><span class="caret">▍</span></div>';
+    thread.appendChild(typing); thread.scrollTop=thread.scrollHeight;
+
+    // 30秒タイムアウト（Vercel本番用）
+    const ctrl=new AbortController();
+    const timeoutId=setTimeout(()=>ctrl.abort(),30000);
+
+    fetch(WEBHOOK_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:text, sessionId:SESSION_ID}),
+      signal:ctrl.signal,
+    })
+    .then(r=>r.json())
+    .then(data=>{
+      clearTimeout(timeoutId);
+      const reply=(data&&data.response)?String(data.response):'(返事が空でした)';
+      typing.querySelector('.body').innerHTML=reply.replace(/</g,'&lt;').replace(/\n/g,'<br>');
+      thread.scrollTop=thread.scrollHeight;
+    })
+    .catch(err=>{
+      clearTimeout(timeoutId);
+      const msg=(err.name==='AbortError')
+        ? '応答が遅いみたいっす🙏　少し時間をおいてもう一度どうぞ。'
+        : 'うまく繋がらなかったみたいっす🙏　少し時間をおいてもう一度どうぞ。';
+      typing.querySelector('.body').innerHTML=msg;
+      console.error('webhook error:',err);
+    });
+  }
+
+  document.getElementById('send').addEventListener('click',()=>handle(input.value));
+  input.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.isComposing){ e.preventDefault(); handle(input.value); }});
+  /* ====== 入力欄プレースホルダー：ローテーション（無言のメニュー） ====== */
+  const HINTS=[
+    "実績を聞いてみる…",
+    "Ask about our track record…",
+    "料金・サービスを相談する…",
+    "Talk pricing and services…",
+    "「うちのこの作業、頼める？」と聞く…",
+    "“Can you automate this for us?”…",
+    "代表と話したい、と伝える…",
+    "Reach the founder directly…",
+    "なんでも話しかけてみる…",
+    "Or just say hello…",
+  ];
+  const ph=document.getElementById('ph');
+  let hi=0; ph.textContent=HINTS[0];
+  function phVisible(){ return !input.value && document.activeElement!==input; }
+  setInterval(()=>{
+    if(!phVisible()) return;
+    ph.classList.add('hide');
+    setTimeout(()=>{ hi=(hi+1)%HINTS.length; ph.textContent=HINTS[hi]; if(phVisible()) ph.classList.remove('hide'); },420);
+  },9600);
+  input.addEventListener('focus',()=>ph.classList.add('hide'));
+  input.addEventListener('blur',()=>{ if(!input.value) ph.classList.remove('hide'); });
+  input.addEventListener('input',()=>{ ph.classList.toggle('hide', !!input.value); });
+</script>
+</body>
+</html>
