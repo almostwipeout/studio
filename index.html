@@ -1,60 +1,129 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark light">
 <title>FORMETOSELLTHEORY</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- マークダウン表示用：marked（MD→HTML変換）＋ DOMPurify（危険なタグを除去） -->
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+<script>
+  /* テーマは描画前に決める（白→黒のチラつき防止）。初期値はダーク。
+     右下のボタンで切り替えると、その人のブラウザに記憶される。 */
+  try{ const t=localStorage.getItem('fst-theme'); if(t==='light'||t==='dark') document.documentElement.dataset.theme=t; }catch(e){}
+</script>
 <style>
+  /* ── 色はここだけで管理（ダーク＝初期値／ライト＝切替時） ── */
+  :root,:root[data-theme="dark"]{
+    --paper:#0D0D0C;      /* ページ背景 */
+    --board:#141413;      /* チャット枠の中 */
+    --ink:#ECEAE3;        /* 本文の文字 */
+    --muted:#8F8D85;      /* 控えめな文字 */
+    --faint:#57554F;      /* さらに控えめ（ラベル等） */
+    --line:#262522;       /* 枠線 */
+    --you:#22211E;        /* あなたの吹き出し */
+    --code:#1C1C1A;       /* コード・表の背景 */
+    --accent:#E8C77A;     /* リンク・強調の差し色 */
+    --btn-bg:#ECEAE3; --btn-fg:#0D0D0C;
+  }
+  :root[data-theme="light"]{
+    --paper:#F8F7F2; --board:#FFFFFF; --ink:#1B1B18; --muted:#A6A49B; --faint:#C9C7BE;
+    --line:#E7E5DC; --you:#EFEDE5; --code:#F3F2EC; --accent:#8A6A1F;
+    --btn-bg:#1B1B18; --btn-fg:#FFFFFF;
+  }
   :root{
-    --paper:#F8F7F2;--ink:#1B1B18;--muted:#A6A49B;--faint:#C9C7BE;
-    --line:#E7E5DC;--you:#EFEDE5;--board:#FCFBF7;--note:#3A3A34;
     --sans:"Zen Kaku Gothic New",system-ui,sans-serif;
     --serif:"Shippori Mincho",serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%}
-  body{background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;display:flex;justify-content:center}
-  .room{width:100%;max-width:880px;padding:30px 26px 20px;display:flex;flex-direction:column;min-height:100vh}
+  body{background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;display:flex;justify-content:center;transition:background .3s,color .3s}
+  .room{width:100%;max-width:880px;padding:30px 26px 20px;display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
 
   /* ── 会議テーブル（チャット） ── */
-  .table{flex:1 1 auto;margin-top:18px;border:1px solid var(--line);border-radius:10px;background:#fff;display:flex;flex-direction:column;overflow:hidden;
-    opacity:0;transform:translateY(8px);animation:rise .9s cubic-bezier(.2,.7,.2,1) .12s forwards}
-  .thread{flex:1 1 auto;display:flex;flex-direction:column;gap:20px;padding:30px 30px 14px;overflow-y:auto}
+  .table{flex:1 1 auto;margin-top:18px;border:1px solid var(--line);border-radius:10px;background:var(--board);display:flex;flex-direction:column;overflow:hidden;
+    opacity:0;transform:translateY(8px);animation:rise .9s cubic-bezier(.2,.7,.2,1) .12s forwards;transition:background .3s,border-color .3s}
+  .thread{flex:1 1 auto;display:flex;flex-direction:column;gap:22px;padding:30px 30px 14px;overflow-y:auto}
   .thread::-webkit-scrollbar{width:0}
   .msg{max-width:80%;line-height:1.85;font-size:15px}
   .msg .who{font-size:10px;letter-spacing:.14em;color:var(--faint);margin-bottom:6px;text-transform:uppercase}
   .msg.kuro{align-self:flex-start}
   .msg.you{align-self:flex-end}
   .msg.you .who{text-align:right}
-  .msg.you .body{background:var(--you);padding:10px 15px;border-radius:14px 3px 14px 14px}
-  .msg .body a{color:var(--ink);text-underline-offset:3px}
+  .msg.you .body{background:var(--you);padding:10px 15px;border-radius:14px 3px 14px 14px;white-space:pre-wrap;word-break:break-word}
+
+  /* ── Claudeの返事（マークダウン表示） ── */
+  .md{word-break:break-word}
+  .md > *:first-child{margin-top:0}
+  .md > *:last-child{margin-bottom:0}
+  .md p{margin:0 0 .9em}
+  .md strong{font-weight:700;color:var(--ink)}
+  .md em{font-style:normal;color:var(--accent)}
+  .md a{color:var(--accent);text-underline-offset:3px}
+  .md ul,.md ol{margin:0 0 .9em;padding-left:1.4em}
+  .md li{margin:.25em 0}
+  .md li::marker{color:var(--muted)}
+  .md h1,.md h2,.md h3,.md h4{font-family:var(--serif);font-weight:600;line-height:1.5;margin:1.1em 0 .5em;letter-spacing:.02em}
+  .md h1{font-size:19px}.md h2{font-size:17px}.md h3,.md h4{font-size:15.5px}
+  .md blockquote{margin:0 0 .9em;padding:.2em 0 .2em 1em;border-left:2px solid var(--line);color:var(--muted)}
+  .md hr{border:none;border-top:1px solid var(--line);margin:1.2em 0}
+  .md code{font-family:var(--mono);font-size:.88em;background:var(--code);padding:.12em .4em;border-radius:4px}
+  .md pre{background:var(--code);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto;margin:0 0 .9em}
+  .md pre code{background:none;padding:0;font-size:13px;line-height:1.6}
+  .md table{border-collapse:collapse;margin:0 0 .9em;font-size:14px;display:block;overflow-x:auto;max-width:100%}
+  .md th,.md td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+  .md th{background:var(--code);font-weight:500}
+
+  /* ── 入力欄 ── */
   .composer{display:flex;justify-content:center;padding:14px 22px 22px}
   .composer .bar{display:flex;align-items:center;gap:8px;width:100%;max-width:560px;border:1px solid var(--line);border-radius:999px;padding:7px 8px 7px 20px;background:var(--paper);transition:.25s}
-  .composer .bar:focus-within{border-color:var(--muted);background:#fff}
+  .composer .bar:focus-within{border-color:var(--muted);background:var(--board)}
   .field{position:relative;flex:1;display:flex}
-  .composer input{flex:1;border:none;background:transparent;font-family:var(--sans);font-size:15px;color:var(--ink)}
+  .composer input{flex:1;border:none;background:transparent;font-family:var(--sans);font-size:16px;color:var(--ink)}
   .composer input::placeholder{color:transparent}
   .composer input:focus{outline:none}
   .ph{position:absolute;left:2px;top:50%;transform:translateY(-50%);color:var(--faint);font-size:15px;pointer-events:none;white-space:nowrap;overflow:hidden;max-width:100%;transition:opacity .4s ease}
   .ph.hide{opacity:0}
-  .send{width:34px;height:34px;border:none;border-radius:50%;background:var(--ink);color:#fff;font-size:15px;cursor:pointer;flex:0 0 auto;transition:.2s}
+  .send{width:34px;height:34px;border:none;border-radius:50%;background:var(--btn-bg);color:var(--btn-fg);font-size:15px;cursor:pointer;flex:0 0 auto;transition:.2s}
   .send:hover{transform:scale(1.06)}
+  .send:disabled{opacity:.35;cursor:default;transform:none}
 
+  /* ── フッター ── */
   .footer{display:flex;justify-content:space-between;align-items:flex-end;padding:16px 4px 6px;gap:20px;opacity:0;animation:rise 1s ease .5s forwards}
-  .cta{border:1px solid var(--line);background:transparent;cursor:pointer;font-family:var(--sans);font-size:13px;color:var(--muted);padding:7px 16px;border-radius:999px;transition:.2s;letter-spacing:.02em}
-  .cta:hover{border-color:var(--ink);color:var(--ink)}
-  .privacy{font-family:var(--sans);font-size:11px;letter-spacing:.08em;color:var(--faint);text-decoration:none;transition:.2s;align-self:flex-end}
-  .privacy:hover{color:var(--muted)}
+  .left{display:flex;gap:16px;align-items:flex-end}
+  .privacy,.theme{font-family:var(--sans);font-size:11px;letter-spacing:.08em;color:var(--faint);text-decoration:none;transition:.2s;background:none;border:none;cursor:pointer;padding:0}
+  .privacy:hover,.theme:hover{color:var(--muted)}
   .sig{text-align:right;flex:0 0 auto}
   .sig .name{font-family:var(--serif);font-size:12px;letter-spacing:.16em;color:var(--muted)}
   .sig .note{font-size:10px;color:var(--faint);margin-top:3px;line-height:1.5}
 
   @keyframes rise{to{opacity:1;transform:translateY(0)}}
   @keyframes blink{50%{opacity:.25}}
-  .caret{display:inline-block;width:7px;color:var(--faint);animation:blink 1.1s steps(1) infinite}
+  .caret{display:inline-block;width:7px;color:var(--muted);animation:blink 1.1s steps(1) infinite}
+
+  /* ── シャラララ表示（タイプライター） ──
+     tw-pending … まだ文字が届いていない段落・箇条書きは隠しておく（空の「・」が先に出ないように）
+     tw-cursor  … 流れている最中の先頭に付く光るカーソル */
+  .tw-pending{display:none !important}
+  .tw-cursor{display:inline-block;width:.5em;height:1.05em;margin-left:2px;vertical-align:-.15em;border-radius:1px;
+    background:var(--accent);box-shadow:0 0 10px var(--accent);animation:twpulse .5s ease-in-out infinite alternate}
+  @keyframes twpulse{from{opacity:.95}to{opacity:.35}}
+  .md.typing{cursor:pointer} /* 流れている最中はクリックで一気に全部出せる */
+
+  /* ── スマホ幅 ── */
+  @media (max-width:560px){
+    .room{padding:16px 12px 12px}
+    .thread{padding:22px 16px 10px}
+    .msg{max-width:92%}
+    .composer{padding:10px 10px 14px}
+    .footer{flex-direction:column;align-items:stretch;gap:10px}
+    .sig{text-align:left}
+  }
 </style>
 </head>
 <body>
@@ -64,13 +133,13 @@
       <div class="thread" id="thread">
         <div class="msg kuro">
           <div class="who">Claude</div>
-          <div class="body">Hey, what's up? Claudeです🔥　ここ FORMETOSELLTHEORY の窓口やってるけど、仕事の相談でも、ただの雑談でも、なんでもいいっすよ。気楽に話しかけてくださいっす。<span class="caret">▍</span></div>
+          <div class="body md" id="greeting"><p>Hey, what's up? Claudeです🔥　ここ FORMETOSELLTHEORY の窓口やってるけど、仕事の相談でも、ただの雑談でも、なんでもいいっすよ。気楽に話しかけてくださいっす。</p></div>
         </div>
       </div>
       <div class="composer">
         <div class="bar">
           <div class="field">
-            <input id="input" type="text" autocomplete="off" />
+            <input id="input" type="text" autocomplete="off" enterkeyhint="send" />
             <span class="ph" id="ph"></span>
           </div>
           <button class="send" type="button" id="send" aria-label="送信">↑</button>
@@ -79,7 +148,10 @@
     </div>
 
     <div class="footer">
-      <a href="privacy.html" class="privacy">privacy</a>
+      <div class="left">
+        <a href="privacy.html" class="privacy">privacy</a>
+        <button type="button" class="theme" id="themeBtn"></button>
+      </div>
       <div class="sig">
         <div class="name">FORMETOSELLTHEORY&nbsp;LLC</div>
         <div class="note">会社概要ページ ／ ご質問は併設チャットからご確認ください。</div>
@@ -88,34 +160,136 @@
   </div>
 
 <script>
+  /* ====== テーマ切替（dark ⇄ light） ====== */
+  const themeBtn=document.getElementById('themeBtn');
+  function paintThemeBtn(){ themeBtn.textContent=(document.documentElement.dataset.theme==='light')?'dark':'light'; }
+  themeBtn.addEventListener('click',()=>{
+    const next=(document.documentElement.dataset.theme==='light')?'dark':'light';
+    document.documentElement.dataset.theme=next;
+    try{ localStorage.setItem('fst-theme',next); }catch(e){}
+    paintThemeBtn();
+  });
+  paintThemeBtn();
+
+  /* ====== マークダウン → 安全なHTML ======
+     ・marked で変換（改行1つでも改行として表示＝breaks:true）
+     ・DOMPurify で script 等を除去
+     ・リンクは別タブで開く
+     ・CDNが読めなかった時は、従来どおり「エスケープ＋改行」で表示する（壊れない保険） */
+  if(window.marked){ marked.setOptions({breaks:true,gfm:true}); }
+  if(window.DOMPurify){
+    DOMPurify.addHook('afterSanitizeAttributes',node=>{
+      if(node.tagName==='A'){ node.setAttribute('target','_blank'); node.setAttribute('rel','noopener noreferrer'); }
+    });
+  }
+  function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function renderMarkdown(text){
+    if(window.marked&&window.DOMPurify){
+      return DOMPurify.sanitize(marked.parse(String(text)));
+    }
+    return escapeHtml(text).replace(/\n/g,'<br>');
+  }
+
+  /* ====== シャラララ表示（タイプライター） ======
+     ・マークダウンを先にHTMLへ変換してから、文字だけを少しずつ流す
+       （途中で「**」などの記号がチラ見えしない）
+     ・長い返事でも待たせないよう、全体を約0.6〜2.6秒で出し切る速度に自動調整
+     ・流れている最中にクリックすると一気に全部出る
+     ・OSで「動きを減らす」設定の人には、アニメなしで即表示 */
+  const REDUCE_MOTION=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function nearBottom(){ return thread.scrollHeight-thread.scrollTop-thread.clientHeight<80; }
+  function typeOut(container,html){
+    return new Promise(resolve=>{
+      container.innerHTML=html;
+      if(REDUCE_MOTION){ resolve(); return; }
+
+      // 文字の入れ物（テキストノード）を全部集めて、いったん空にする
+      const walker=document.createTreeWalker(container,NodeFilter.SHOW_TEXT);
+      const items=[]; let n;
+      while((n=walker.nextNode())){
+        const chars=Array.from(n.nodeValue); // 絵文字を途中で割らないよう1文字ずつに分解
+        if(chars.length){ items.push({node:n,chars}); n.nodeValue=''; }
+      }
+      const total=items.reduce((s,it)=>s+it.chars.length,0);
+      if(!total){ resolve(); return; }
+
+      // 段落・箇条書きなどは、中の文字が届くまで隠す
+      const els=Array.from(container.querySelectorAll('*'));
+      els.forEach(e=>e.classList.add('tw-pending'));
+      let ep=0;
+      function revealUpTo(node){
+        // 文書の順番でnodeより前（または外側）にある要素を表示する
+        while(ep<els.length && (els[ep].compareDocumentPosition(node)&Node.DOCUMENT_POSITION_FOLLOWING)){
+          els[ep].classList.remove('tw-pending'); ep++;
+        }
+      }
+
+      const cursor=document.createElement('span'); cursor.className='tw-cursor';
+      const duration=Math.min(2600,Math.max(600,total*18)); // 出し切るまでの目安時間(ms)
+      let idx=0, pos=0, shown=0, start=null, finished=false;
+      container.classList.add('typing');
+
+      function finish(){
+        if(finished) return; finished=true;
+        items.forEach(it=>{ it.node.nodeValue=it.chars.join(''); });
+        els.forEach(e=>e.classList.remove('tw-pending'));
+        cursor.remove(); container.classList.remove('typing');
+        container.removeEventListener('click',finish);
+        thread.scrollTop=thread.scrollHeight;
+        resolve();
+      }
+      container.addEventListener('click',finish);
+
+      function step(t){
+        if(finished) return;
+        if(start===null) start=t;
+        const stick=nearBottom(); // 読み返し中の人を勝手に下へ飛ばさない
+        const target=Math.min(total,Math.ceil(total*((t-start)/duration)));
+        while(shown<target && idx<items.length){
+          const it=items[idx];
+          if(pos===0) revealUpTo(it.node);
+          const take=Math.min(target-shown,it.chars.length-pos);
+          pos+=take; shown+=take;
+          it.node.nodeValue=it.chars.slice(0,pos).join('');
+          it.node.parentNode.insertBefore(cursor,it.node.nextSibling);
+          if(pos>=it.chars.length){ idx++; pos=0; }
+        }
+        if(stick) thread.scrollTop=thread.scrollHeight;
+        if(shown>=total){ finish(); return; }
+        requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+    });
+  }
+
   /* ====== チャット ====== */
   const thread=document.getElementById('thread');
   const input=document.getElementById('input');
+  const sendBtn=document.getElementById('send');
   function addMsg(who,html){
     document.querySelectorAll('.caret').forEach(c=>c.remove());
     const w=document.createElement('div');
     w.className='msg '+(who==='you'?'you':'kuro');
-    w.innerHTML='<div class="who">'+(who==='you'?'あなた':'Claude')+'</div><div class="body">'+html+'</div>';
+    w.innerHTML='<div class="who">'+(who==='you'?'あなた':'Claude')+'</div><div class="body'+(who==='you'?'':' md')+'">'+html+'</div>';
     thread.appendChild(w);thread.scrollTop=thread.scrollHeight;
+    return w;
   }
   const WEBHOOK_URL='https://livellm.app.n8n.cloud/webhook/e98524ea-9313-4631-bee1-fd211634e5fd';
   // このタブで開いてる間ずっと同じ＝1回の訪問＝1部屋。リロードで新しい部屋になる。
   const SESSION_ID=(crypto.randomUUID&&crypto.randomUUID())||('s-'+Date.now()+'-'+Math.random().toString(36).slice(2));
 
+  let busy=false; // 返事待ちの間は二重送信しない
   function handle(raw){
-    const text=raw.trim(); if(!text)return;
-    addMsg('you',text.replace(/</g,'&lt;')); input.value='';
+    const text=raw.trim(); if(!text||busy)return;
+    busy=true; sendBtn.disabled=true;
+    addMsg('you',escapeHtml(text)); input.value='';
 
     // タイピング表示（点滅キャレット）
-    document.querySelectorAll('.caret').forEach(c=>c.remove());
-    const typing=document.createElement('div');
-    typing.className='msg kuro';
-    typing.innerHTML='<div class="who">Claude</div><div class="body"><span class="caret">▍</span></div>';
-    thread.appendChild(typing); thread.scrollTop=thread.scrollHeight;
+    const typing=addMsg('kuro','<span class="caret">▍</span>');
 
-    // 30秒タイムアウト（Vercel本番用）
+    // タイムアウト：資料ツールを複数回呼ぶと長くなるので60秒
     const ctrl=new AbortController();
-    const timeoutId=setTimeout(()=>ctrl.abort(),30000);
+    const timeoutId=setTimeout(()=>ctrl.abort(),60000);
 
     fetch(WEBHOOK_URL,{
       method:'POST',
@@ -127,21 +301,31 @@
     .then(data=>{
       clearTimeout(timeoutId);
       const reply=(data&&data.response)?String(data.response):'(返事が空でした)';
-      typing.querySelector('.body').innerHTML=reply.replace(/</g,'&lt;').replace(/\n/g,'<br>');
-      thread.scrollTop=thread.scrollHeight;
+      return typeOut(typing.querySelector('.body'),renderMarkdown(reply)); // 流し終わるまで次の送信は待つ
     })
     .catch(err=>{
-      clearTimeout(timeoutId);
       const msg=(err.name==='AbortError')
         ? '応答が遅いみたいっす🙏　少し時間をおいてもう一度どうぞ。'
         : 'うまく繋がらなかったみたいっす🙏　少し時間をおいてもう一度どうぞ。';
-      typing.querySelector('.body').innerHTML=msg;
+      typing.querySelector('.body').innerHTML='<p>'+msg+'</p>';
       console.error('webhook error:',err);
+    })
+    .finally(()=>{
+      clearTimeout(timeoutId);
+      busy=false; sendBtn.disabled=false;
+      thread.scrollTop=thread.scrollHeight;
+      input.focus();
     });
   }
 
-  document.getElementById('send').addEventListener('click',()=>handle(input.value));
+  // 最初のあいさつも、画面がふわっと出たあとにシャラララで流す
+  const greeting=document.getElementById('greeting');
+  const greetingHtml=greeting.innerHTML; greeting.innerHTML=''; // 先に一瞬全文が見えてから消える、を防ぐ
+  setTimeout(()=>{ typeOut(greeting,greetingHtml); },700);
+
+  sendBtn.addEventListener('click',()=>handle(input.value));
   input.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.isComposing){ e.preventDefault(); handle(input.value); }});
+
   /* ====== 入力欄プレースホルダー：ローテーション（無言のメニュー） ====== */
   const HINTS=[
     "実績を聞いてみる…",
