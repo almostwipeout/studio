@@ -115,6 +115,41 @@
   @keyframes twpulse{from{opacity:.95}to{opacity:.35}}
   .md.typing{cursor:pointer} /* 流れている最中はクリックで一気に全部出せる */
 
+  /* ── 考え中アニメーション（光の玉がふうわあっ） ──
+     orbs  … 3つの小さな光の玉。順番に膨らんで浮き上がり、しぼんで沈む
+     halo  … 玉の後ろでゆっくり呼吸する、ぼんやりした光
+     label … 「考え中」の文字に光が左→右へ流れる
+     leaving … 返事が届いたら玉がすっと吸い込まれて消え、そのあと文字が流れ始める */
+  .thinking{display:inline-flex;align-items:center;gap:12px;padding:4px 0;transition:opacity .28s ease,transform .28s ease}
+  .thinking.leaving{opacity:0;transform:scale(.85)}
+  .orbs{position:relative;width:46px;height:22px;display:flex;align-items:center;justify-content:space-between;padding:0 4px}
+  .orbs .halo{position:absolute;inset:-10px -6px;border-radius:50%;
+    background:radial-gradient(closest-side,var(--accent),transparent);filter:blur(6px);opacity:.18;
+    animation:halo 2.8s ease-in-out infinite}
+  .orbs i{position:relative;width:7px;height:7px;border-radius:50%;background:var(--accent);
+    box-shadow:0 0 6px var(--accent),0 0 14px var(--accent);
+    animation:orb 1.5s cubic-bezier(.45,0,.25,1) infinite}
+  .orbs i:nth-child(3){animation-delay:.2s}
+  .orbs i:nth-child(4){animation-delay:.4s}
+  @keyframes orb{
+    0%,100%{transform:translateY(2px) scale(.55);opacity:.35}
+    45%{transform:translateY(-4px) scale(1.15);opacity:1}
+    70%{transform:translateY(-1px) scale(.9);opacity:.75}
+  }
+  @keyframes halo{
+    0%,100%{transform:scale(.75);opacity:.1}
+    50%{transform:scale(1.1);opacity:.32}
+  }
+  .thinking .label{font-size:12px;letter-spacing:.12em;color:var(--muted);
+    background:linear-gradient(90deg,var(--faint) 0%,var(--faint) 35%,var(--ink) 50%,var(--faint) 65%,var(--faint) 100%);
+    background-size:250% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    animation:shimmer 2.2s linear infinite;transition:opacity .3s}
+  @keyframes shimmer{from{background-position:100% 0}to{background-position:-50% 0}}
+  @media (prefers-reduced-motion: reduce){
+    .orbs i,.orbs .halo,.thinking .label{animation:none}
+    .orbs i{opacity:.8;transform:none}
+  }
+
   /* ── スマホ幅 ── */
   @media (max-width:560px){
     .room{padding:16px 12px 12px}
@@ -284,8 +319,19 @@
     busy=true; sendBtn.disabled=true;
     addMsg('you',escapeHtml(text)); input.value='';
 
-    // タイピング表示（点滅キャレット）
-    const typing=addMsg('kuro','<span class="caret">▍</span>');
+    // 考え中アニメーション（光の玉）。長引いたら文言だけ変える
+    const typing=addMsg('kuro',
+      '<div class="thinking" role="status" aria-label="考え中">'+
+        '<span class="orbs"><span class="halo"></span><i></i><i></i><i></i></span>'+
+        '<span class="label">考え中</span>'+
+      '</div>');
+    const thinkingEl=typing.querySelector('.thinking');
+    const labelTimer=setTimeout(()=>{
+      const l=thinkingEl.querySelector('.label'); l.style.opacity=0;
+      setTimeout(()=>{ l.textContent='じっくり考え中'; l.style.opacity=1; },300);
+    },9000);
+    // 玉をすっと消してから次へ（返事が届いた時・失敗した時の両方で使う）
+    const dismissThinking=()=>{ clearTimeout(labelTimer); thinkingEl.classList.add('leaving'); return new Promise(r=>setTimeout(r,280)); };
 
     // タイムアウト：資料ツールを複数回呼ぶと長くなるので60秒
     const ctrl=new AbortController();
@@ -301,14 +347,14 @@
     .then(data=>{
       clearTimeout(timeoutId);
       const reply=(data&&data.response)?String(data.response):'(返事が空でした)';
-      return typeOut(typing.querySelector('.body'),renderMarkdown(reply)); // 流し終わるまで次の送信は待つ
+      return dismissThinking().then(()=>typeOut(typing.querySelector('.body'),renderMarkdown(reply))); // 流し終わるまで次の送信は待つ
     })
     .catch(err=>{
       const msg=(err.name==='AbortError')
         ? '応答が遅いみたいっす🙏　少し時間をおいてもう一度どうぞ。'
         : 'うまく繋がらなかったみたいっす🙏　少し時間をおいてもう一度どうぞ。';
-      typing.querySelector('.body').innerHTML='<p>'+msg+'</p>';
       console.error('webhook error:',err);
+      return dismissThinking().then(()=>typeOut(typing.querySelector('.body'),'<p>'+msg+'</p>'));
     })
     .finally(()=>{
       clearTimeout(timeoutId);
