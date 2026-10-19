@@ -397,5 +397,9 @@
   input.addEventListener('blur',()=>{ if(!input.value) ph.classList.remove('hide'); });
   input.addEventListener('input',()=>{ ph.classList.toggle('hide', !!input.value); });
 </script>
+
+<!-- 黒猫（neko2）：ページの中を自由に歩き回る。data-scale="0.75" ＝ 元の絵の0.75倍（体の幅 約65px）
+     neko2 フォルダ（neko.js と neko1-sheet.png）をこの index.html と同じ場所に置く -->
+<script src="/neko2/neko.js" data-scale="0.75" defer></script>
 </body>
 </html>
